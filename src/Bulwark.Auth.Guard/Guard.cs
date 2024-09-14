@@ -1,6 +1,6 @@
 ﻿using System.Threading.Tasks;
 using RestSharp;
-//build: 3
+//build: 4
 namespace Bulwark.Auth.Guard;
 
 public class Guard
