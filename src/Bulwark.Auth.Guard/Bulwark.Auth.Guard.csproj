@@ -6,12 +6,12 @@
     <AssemblyName>Guard</AssemblyName>
     <Authors>fritz@lateflip.io</Authors>
     <Description>A client for Bulwark.Auth</Description>
-    <PackageVersion>1.0.0-beta.4</PackageVersion>
+    <PackageVersion>1.0.0-beta.5</PackageVersion>
     <Copyright>latebitflip.io</Copyright>
     <Company>lateflip.io</Company>
     <Product>Bulwark.Auth.Guard</Product>
     <PackageId>Bulwark.Auth.Guard</PackageId>
-    <Version>1.0.0-beta.4</Version>
+    <Version>1.0.0-beta.5</Version>
     <Title>Bulwark.Auth.Guard</Title>
     <PackageProjectUrl>https://github.com/lateflip-io/Bulwark.Auth.Guard</PackageProjectUrl>
     <PackageLicenseUrl>https://github.com/lateflip-io/Bulwark.Auth.Guard</PackageLicenseUrl>
