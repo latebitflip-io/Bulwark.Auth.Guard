@@ -13,9 +13,9 @@
     <PackageId>Bulwark.Auth.Guard</PackageId>
     <Version>1.0.0-beta.5</Version>
     <Title>Bulwark.Auth.Guard</Title>
-    <PackageProjectUrl>https://github.com/lateflip-io/Bulwark.Auth.Guard</PackageProjectUrl>
-    <PackageLicenseUrl>https://github.com/lateflip-io/Bulwark.Auth.Guard</PackageLicenseUrl>
-    <RepositoryUrl>https://github.com/lateflip-io/Bulwark.Auth.Guard</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/latebitflip-io/Bulwark.Auth.Guard</PackageProjectUrl>
+    <PackageLicenseUrl>https://github.com/latebitflip-io/Bulwark.Auth.Guard</PackageLicenseUrl>
+    <RepositoryUrl>https://github.com/latebitflip-io/Bulwark.Auth.Guard</RepositoryUrl>
     <RepositoryType>GIT</RepositoryType>
     <PackageTags>Bulwark auth client</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
