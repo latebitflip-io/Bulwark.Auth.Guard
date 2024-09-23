@@ -13,13 +13,13 @@ namespace Bulwark.Auth.Guard;
 public class Key
 {
     [JsonPropertyName("keyId")]
-    public string KeyId { get; set; }
+    public string KeyId { get; set; } = string.Empty;
     [JsonPropertyName("format")]
-    public string Format { get; set; }
+    public string Format { get; set; }= string.Empty;
     [JsonPropertyName("publicKey")]
-    public string PublicKey { get; set; }
+    public string PublicKey { get; set; } = string.Empty;
     [JsonPropertyName("algorithm")]
-    public string Algorithm { get; set; }
+    public string Algorithm { get; set; } = string.Empty;
     [JsonPropertyName("created")]
     public DateTime Created { get; set; }
 }

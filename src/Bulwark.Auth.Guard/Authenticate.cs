@@ -19,19 +19,19 @@ public class Authenticate
         { SocialProvider.Microsoft, "microsoft" },
         { SocialProvider.Github, "github" }
     };
-    
+
     public Authenticate(string baseUri)
     {
         _client = new RestClient(baseUri);
         _client.AddDefaultHeader("Content-Type", "application/json");
         _client.AddDefaultHeader("Accept", "application/json");
     }
-    
+
     public Authenticate(RestClient client)
     {
         _client = client;
     }
-    
+
     /// <summary>
     /// Authenticates and account using password
     /// </summary>
@@ -51,7 +51,7 @@ public class Authenticate
         var request = new RestRequest("authentication/authenticate")
             .AddJsonBody(payload);
 
-       
+
         var response = await _client.ExecutePostAsync(request);
 
         if ((int)response.StatusCode >= 400 && response.Content != null)
@@ -62,18 +62,18 @@ public class Authenticate
             {
                 throw new BulwarkException(error.Detail);
             }
-            
+
             throw new BulwarkException("Unknown error");
         }
         if(response.Content != null)
         {
-            return JsonSerializer.Deserialize<Authenticated>(response.Content) ?? 
+            return JsonSerializer.Deserialize<Authenticated>(response.Content) ??
                    throw new BulwarkException("Unknown error");
         }
-        
+
         throw new BulwarkException("Unknown error");
     }
-    
+
     public async Task<Authenticated> MagicCode(string email,
         string code)
     {
@@ -97,15 +97,15 @@ public class Authenticate
                 throw new BulwarkException(error.Detail);
             }
         }
-        
+
         if(response.Content != null){
-            return JsonSerializer.Deserialize<Authenticated>(response.Content) ?? 
+            return JsonSerializer.Deserialize<Authenticated>(response.Content) ??
                    throw new BulwarkException("No Content");
         }
-        
+
         throw new BulwarkException("Unknown error");
     }
-    
+
     public async Task RequestMagicLink(string email)
     {
         var request = new RestRequest("passwordless/magic/request/{email}")
@@ -121,7 +121,7 @@ public class Authenticate
             {
                 throw new BulwarkException(error.Detail);
             }
-            
+
             throw new BulwarkException("Unknown error");
         }
     }
@@ -133,10 +133,10 @@ public class Authenticate
             Provider = _socialProviders[provider],
             SocialToken = socialToken
         };
-        
+
         var request = new RestRequest("passwordless/social/authenticate")
             .AddJsonBody(payload);
-        
+
         var response = await _client.ExecutePostAsync(request);
 
         if (response.Content != null && (int)response.StatusCode >= 400)
@@ -146,42 +146,39 @@ public class Authenticate
             if (error is { Detail: { } })
             {
                 throw new BulwarkException(error.Detail);
-            } 
+            }
         }
-        
+
         if(response.Content != null){
-            return JsonSerializer.Deserialize<Authenticated>(response.Content) ?? 
+            return JsonSerializer.Deserialize<Authenticated>(response.Content) ??
                    throw new BulwarkException("No Content");
         }
-        
+
         throw new BulwarkException("Unknown error");
     }
-    
+
     /// <summary>
     /// When a account is authenticated it will return a accessToken and refreshToken
     /// these need to be acknowledged by the server to be valid and should be done before
     /// using these tokens.
     /// When validating tokens client side the tokens should be still be acknowledged
     /// </summary>
-    /// <param name="accessToken"></param>
-    /// <param name="refreshToken"></param>
+    /// <param name="authenticated"></param>
     /// <param name="email"></param>
     /// <param name="deviceId"></param>
-    public async Task Acknowledge(string accessToken, string refreshToken,
+    public async Task Acknowledge(Authenticated authenticated,
         string email, string deviceId)
     {
         var payload = new
         {
             Email = email,
             DeviceId = deviceId,
-            AccessToken = accessToken,
-            RefreshToken = refreshToken
+            AccessToken = authenticated.AccessToken,
+            RefreshToken = authenticated.RefreshToken
         };
 
         var request = new RestRequest("authentication/acknowledge")
             .AddJsonBody(payload);
-
-
         var response = await _client.ExecutePostAsync(request);
 
         if ((int)response.StatusCode >= 400 && response.Content != null)
@@ -192,15 +189,15 @@ public class Authenticate
             {
                 throw new BulwarkException(error.Detail);
             }
-            
+
             throw new BulwarkException("Unknown error");
         }
     }
-    
+
     /// <summary>
     /// This is a deep validation of an access token. It will check if the token
     /// has been acknowledged, revoked , expired, etc. This is the most secure
-    /// check on the token. 
+    /// check on the token.
     /// </summary>
     /// <param name="email"></param>
     /// <param name="accessToken"></param>
@@ -230,28 +227,28 @@ public class Authenticate
             {
                 throw new BulwarkException(error.Detail);
             }
-            
+
             throw new BulwarkException("Unknown error");
         }
-        
+
         if(response.Content != null)
         {
-            return JsonSerializer.Deserialize<AccessToken>(response.Content) ?? 
+            return JsonSerializer.Deserialize<AccessToken>(response.Content) ??
                    throw new BulwarkException("No Content");
         }
-        
+
         throw new BulwarkException("Unknown error");
     }
-    
+
     public AccessToken? ValidateAccessTokenClientSide(string accessToken)
     {
         var handler = new JwtSecurityTokenHandler();
         var decodedValue = handler.ReadJwtToken(accessToken);
-        var keyId = decodedValue.Header["kid"].ToString() ?? 
+        var keyId = decodedValue.Header["kid"].ToString() ??
                                    throw new BulwarkException("No kid claim");
         Key key;
-        
-        
+
+
         if (_keys.ContainsKey(keyId))
         {
             key = _keys[keyId];
@@ -269,16 +266,16 @@ public class Authenticate
             .WithAlgorithm(new RS256Algorithm(publicKey))
             .MustVerifySignature()
             .Decode(accessToken);
-        
+
         var token = JsonSerializer.Deserialize<AccessToken>(json);
 
         return token;
     }
-    
+
     public async Task InitializeLocalKeyValidation()
     {
         var request = new RestRequest("keys");
-            
+
         var response = await _client.ExecuteGetAsync(request);
 
         if (response.Content != null)
@@ -295,7 +292,7 @@ public class Authenticate
             }
         }
     }
-    
+
     public async Task<Authenticated> Renew(string refreshToken,
         string email, string deviceId)
     {
@@ -319,12 +316,12 @@ public class Authenticate
             {
                 throw new BulwarkException(error.Detail);
             }
-            
+
             throw new BulwarkException("Unknown error");
         }
         if(response.Content != null)
         {
-            return JsonSerializer.Deserialize<Authenticated>(response.Content) ?? 
+            return JsonSerializer.Deserialize<Authenticated>(response.Content) ??
                    throw new BulwarkException("No Content");
         }
 
@@ -354,7 +351,7 @@ public class Authenticate
             {
                 throw new BulwarkException(error.Detail);
             }
-            
+
             throw new BulwarkException("Unknown error");
         }
     }

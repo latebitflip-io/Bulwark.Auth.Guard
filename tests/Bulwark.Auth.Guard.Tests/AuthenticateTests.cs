@@ -24,7 +24,7 @@ public class AuthenticateTests
             _testPassword);
         Assert.NotNull(authenticated.AccessToken);
     }
-    
+
     [Fact]
     public async Task AuthenticatePasswordWithWrongPassword()
     {
@@ -46,7 +46,7 @@ public class AuthenticateTests
             Assert.True(true, exception.Message);
         }
     }
-    
+
     [Fact]
     public async Task AuthenticatePasswordAndAcknowledgeValidateLocal()
     {
@@ -63,8 +63,7 @@ public class AuthenticateTests
         Assert.NotNull(authenticated.AccessToken);
         Assert.NotNull(authenticated.RefreshToken);
 
-        await _guard.Authenticate.Acknowledge(authenticated.AccessToken,
-            authenticated.RefreshToken, _testEmail,
+        await _guard.Authenticate.Acknowledge(authenticated, _testEmail,
             Guid.NewGuid().ToString());
 
         var token =
@@ -87,8 +86,7 @@ public class AuthenticateTests
         Assert.NotNull(authenticated.AccessToken);
         Assert.NotNull(authenticated.RefreshToken);
 
-        await _guard.Authenticate.Acknowledge(authenticated.AccessToken,
-            authenticated.RefreshToken, _testEmail,
+        await _guard.Authenticate.Acknowledge(authenticated, _testEmail,
             deviceId);
 
         var token = await _guard.Authenticate.ValidateAccessToken(_testEmail,
@@ -121,7 +119,7 @@ public class AuthenticateTests
             Assert.True(true, exception.Message);
         }
     }
-    
+
     [Fact]
     public async Task RenewAuthentication()
     {
@@ -137,8 +135,7 @@ public class AuthenticateTests
             _testPassword);
         Assert.NotNull(authenticated.AccessToken);
         Assert.NotNull(authenticated.RefreshToken);
-        await _guard.Authenticate.Acknowledge(authenticated.AccessToken,
-            authenticated.RefreshToken, _testEmail,
+        await _guard.Authenticate.Acknowledge(authenticated, _testEmail,
             deviceId);
         try
         {
@@ -156,7 +153,7 @@ public class AuthenticateTests
 
         Assert.NotNull(authenticated.RefreshToken);
     }
-    
+
     [Fact]
     public async Task RevokeAuthentication()
     {
@@ -172,12 +169,11 @@ public class AuthenticateTests
             _testPassword);
         Assert.NotNull(authenticated.AccessToken);
         Assert.NotNull(authenticated.RefreshToken);
-        await _guard.Authenticate.Acknowledge(authenticated.AccessToken,
-            authenticated.RefreshToken, _testEmail,
+        await _guard.Authenticate.Acknowledge(authenticated, _testEmail,
             deviceId);
         await _guard.Authenticate.Revoke(authenticated.AccessToken, _testEmail,
             deviceId);
-        
+
         try
         {
             await _guard.Authenticate.ValidateAccessToken(_testEmail,
@@ -189,7 +185,7 @@ public class AuthenticateTests
             Assert.True(true, exception.Message);
         }
     }
-    
+
     [Fact]
     public async Task RequestMagicLinkAndAuthenticate()
     {
@@ -209,10 +205,10 @@ public class AuthenticateTests
         var authenticated = await _guard.Authenticate.MagicCode(_testEmail,
             message.Subject);
         Assert.NotNull(authenticated.AccessToken);
-        
+
         await _mailHog.DeleteAsync(message.ID);
     }
-    
+
     [Fact]
     public async Task GoogleLoginAndAuthenticate()
     {

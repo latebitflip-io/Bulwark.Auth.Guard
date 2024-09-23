@@ -1,6 +1,6 @@
 services:
   bulwark.auth:
-    image: "latebitflip/bulwark.auth:latest"
+    image: "bukwark-auth-test-arm-4"
     env_file:
       - .env
     ports:
@@ -12,7 +12,7 @@ services:
     image: mongo:7
     container_name: mongodb
     ports:
-      - '27017:27017'
+      - "27017:27017"
     command: mongod --replSet rs0
     healthcheck:
       test: |
@@ -26,4 +26,3 @@ services:
     ports:
       - 1025:1025
       - 8025:8025
-  
