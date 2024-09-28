@@ -7,22 +7,21 @@ namespace Bulwark.Auth.Guard;
 public class Account
 {
     private readonly RestClient _client;
-    
+
     public Account(string baseUri)
     {
         _client = new RestClient(baseUri);
         _client.AddDefaultHeader("Content-Type", "application/json");
         _client.AddDefaultHeader("Accept", "application/json");
     }
-    
+
     public Account(RestClient client)
     {
         _client = client;
     }
-    
+
     /// <summary>
-    /// Creates an account in bulwark-auth, this will send an email to the account
-    /// email for verification
+    /// Creates an account in bulwark-auth, this will email the account for verification
     /// </summary>
     /// <param name="email"></param>
     /// <param name="password"></param>
@@ -49,11 +48,11 @@ public class Account
             {
                 throw new BulwarkException(error.Detail);
             }
-            
+
             throw new BulwarkException("Unknown error");
         }
     }
-    
+
     /// <summary>
     /// Delete an account on bulwark-auth, the user must be logged in and send
     /// a valid access token to delete the account.
@@ -85,12 +84,12 @@ public class Account
                 {
                     throw new BulwarkException(error.Detail);
                 }
-                
+
                 throw new BulwarkException("Unknown error");
             }
         }
     }
-    
+
     /// <summary>
     /// To verify an account the verification token needs to be verified to activate an account
     /// an account is not usable until it is verified
@@ -120,11 +119,11 @@ public class Account
             {
                 throw new BulwarkException(error.Detail);
             }
-            
+
             throw new BulwarkException("Unknown error");
         }
     }
-    
+
     /// <summary>
     /// This is used to change an email of the account of authenticated
     /// account.
@@ -157,11 +156,11 @@ public class Account
             {
                 throw new BulwarkAccountException(error.Detail);
             }
-            
+
             throw new BulwarkException("Unknown error");
         }
     }
-    
+
     /// <summary>
     /// This is used to change an email of authenticated account
     /// </summary>
@@ -193,11 +192,11 @@ public class Account
             {
                 throw new BulwarkException(error.Detail);
             }
-            
+
             throw new BulwarkException("Unknown error");
         }
     }
-    
+
     /// <summary>
     /// The email sent out should provide a link to end point that uses
     /// this method to change the password
@@ -230,11 +229,11 @@ public class Account
             {
                 throw new BulwarkException(error.Detail);
             }
-            
+
             throw new BulwarkException("Unknown error");
         }
     }
-    
+
     /// <summary>
     /// Triggers a forgot password email
     /// </summary>

@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Bulwark.Auth.Guard.Exceptions;
 using JWT.Algorithms;
 using JWT.Builder;
+using JWT.Exceptions;
 using RestSharp;
 
 namespace Bulwark.Auth.Guard;
@@ -12,22 +13,26 @@ namespace Bulwark.Auth.Guard;
 public class Authenticate
 {
     private readonly RestClient _client;
-    private Dictionary<int, Cert> _certs;
-    
+    private Dictionary<string, Key> _keys = new();
+    private readonly Dictionary<SocialProvider, string> _socialProviders = new()
+    {
+        { SocialProvider.Google, "google" },
+        { SocialProvider.Microsoft, "microsoft" },
+        { SocialProvider.Github, "github" }
+    };
+
     public Authenticate(string baseUri)
     {
         _client = new RestClient(baseUri);
         _client.AddDefaultHeader("Content-Type", "application/json");
         _client.AddDefaultHeader("Accept", "application/json");
-        _certs = new Dictionary<int, Cert>();
     }
-    
+
     public Authenticate(RestClient client)
     {
         _client = client;
-        _certs = new Dictionary<int, Cert>();
     }
-    
+
     /// <summary>
     /// Authenticates and account using password
     /// </summary>
@@ -47,7 +52,7 @@ public class Authenticate
         var request = new RestRequest("authentication/authenticate")
             .AddJsonBody(payload);
 
-       
+
         var response = await _client.ExecutePostAsync(request);
 
         if ((int)response.StatusCode >= 400 && response.Content != null)
@@ -58,18 +63,18 @@ public class Authenticate
             {
                 throw new BulwarkException(error.Detail);
             }
-            
+
             throw new BulwarkException("Unknown error");
         }
         if(response.Content != null)
         {
-            return JsonSerializer.Deserialize<Authenticated>(response.Content) ?? 
+            return JsonSerializer.Deserialize<Authenticated>(response.Content) ??
                    throw new BulwarkException("Unknown error");
         }
-        
+
         throw new BulwarkException("Unknown error");
     }
-    
+
     public async Task<Authenticated> MagicCode(string email,
         string code)
     {
@@ -93,15 +98,15 @@ public class Authenticate
                 throw new BulwarkException(error.Detail);
             }
         }
-        
+
         if(response.Content != null){
-            return JsonSerializer.Deserialize<Authenticated>(response.Content) ?? 
+            return JsonSerializer.Deserialize<Authenticated>(response.Content) ??
                    throw new BulwarkException("No Content");
         }
-        
+
         throw new BulwarkException("Unknown error");
     }
-    
+
     public async Task RequestMagicLink(string email)
     {
         var request = new RestRequest("passwordless/magic/request/{email}")
@@ -117,22 +122,22 @@ public class Authenticate
             {
                 throw new BulwarkException(error.Detail);
             }
-            
+
             throw new BulwarkException("Unknown error");
         }
     }
 
-    public async Task<Authenticated> Social(string provider, string socialToken)
+    public async Task<Authenticated> Social(SocialProvider provider, string socialToken)
     {
         var payload = new
         {
-            Provider = provider,
+            Provider = _socialProviders[provider],
             SocialToken = socialToken
         };
-        
+
         var request = new RestRequest("passwordless/social/authenticate")
             .AddJsonBody(payload);
-        
+
         var response = await _client.ExecutePostAsync(request);
 
         if (response.Content != null && (int)response.StatusCode >= 400)
@@ -144,59 +149,57 @@ public class Authenticate
                 throw new BulwarkException(error.Detail);
             }
         }
-        
+
         if(response.Content != null){
-            return JsonSerializer.Deserialize<Authenticated>(response.Content) ?? 
+            return JsonSerializer.Deserialize<Authenticated>(response.Content) ??
                    throw new BulwarkException("No Content");
         }
-        
+
         throw new BulwarkException("Unknown error");
     }
-    
+
     /// <summary>
     /// When a account is authenticated it will return a accessToken and refreshToken
     /// these need to be acknowledged by the server to be valid and should be done before
     /// using these tokens.
     /// When validating tokens client side the tokens should be still be acknowledged
     /// </summary>
-    /// <param name="accessToken"></param>
-    /// <param name="refreshToken"></param>
+    /// <param name="authenticated"></param>
     /// <param name="email"></param>
     /// <param name="deviceId"></param>
-    public async Task Acknowledge(string accessToken, string refreshToken,
+    public async Task Acknowledge(Authenticated authenticated,
         string email, string deviceId)
     {
         var payload = new
         {
             Email = email,
             DeviceId = deviceId,
-            AccessToken = accessToken,
-            RefreshToken = refreshToken
+            AccessToken = authenticated.AccessToken,
+            RefreshToken = authenticated.RefreshToken
         };
 
         var request = new RestRequest("authentication/acknowledge")
             .AddJsonBody(payload);
-
-
         var response = await _client.ExecutePostAsync(request);
 
         if ((int)response.StatusCode >= 400 && response.Content != null)
         {
             var error = JsonSerializer
                 .Deserialize<Error>(response.Content);
-            if (error is { Detail: { } })
+            if (error is not { Detail: not null }) throw new BulwarkException("Unknown error");
+            if (error.Detail.Contains("token expired", System.StringComparison.CurrentCultureIgnoreCase))
             {
-                throw new BulwarkException(error.Detail);
+                throw new BulwarkTokenExpiredException(error.Detail);
             }
-            
+
             throw new BulwarkException("Unknown error");
         }
     }
-    
+
     /// <summary>
     /// This is a deep validation of an access token. It will check if the token
     /// has been acknowledged, revoked , expired, etc. This is the most secure
-    /// check on the token. 
+    /// check on the token.
     /// </summary>
     /// <param name="email"></param>
     /// <param name="accessToken"></param>
@@ -226,30 +229,31 @@ public class Authenticate
             {
                 throw new BulwarkException(error.Detail);
             }
-            
+
             throw new BulwarkException("Unknown error");
         }
-        
+
         if(response.Content != null)
         {
-            return JsonSerializer.Deserialize<AccessToken>(response.Content) ?? 
+            return JsonSerializer.Deserialize<AccessToken>(response.Content) ??
                    throw new BulwarkException("No Content");
         }
-        
+
         throw new BulwarkException("Unknown error");
     }
-    
+
     public AccessToken? ValidateAccessTokenClientSide(string accessToken)
     {
         var handler = new JwtSecurityTokenHandler();
         var decodedValue = handler.ReadJwtToken(accessToken);
-        var generation = int.Parse(decodedValue.Header["gen"].ToString() ?? 
-                                   throw new BulwarkException("No generation claim"));
-        Cert cert;
-        
-        if (_certs.ContainsKey(generation))
+        var keyId = decodedValue.Header["kid"].ToString() ??
+                                   throw new BulwarkException("No kid claim");
+        Key key;
+
+
+        if (_keys.ContainsKey(keyId))
         {
-            cert = _certs[generation];
+            key = _keys[keyId];
         }
         else
         {
@@ -258,39 +262,46 @@ public class Authenticate
 
         var publicKey = RSA.Create();
 
-        publicKey.ImportFromPem(cert.PublicKey.ToCharArray());
+        publicKey.ImportFromPem(key.PublicKey.ToCharArray());
 
-        var json = JwtBuilder.Create()
-            .WithAlgorithm(new RS256Algorithm(publicKey))
-            .MustVerifySignature()
-            .Decode(accessToken);
-        
-        var token = JsonSerializer.Deserialize<AccessToken>(json);
+        try
+        {
+            var json = JwtBuilder.Create()
+                .WithAlgorithm(new RS256Algorithm(publicKey))
+                .MustVerifySignature()
+                .Decode(accessToken);
 
-        return token;
+            var token = JsonSerializer.Deserialize<AccessToken>(json);
+
+            return token;
+        }
+        catch (TokenExpiredException)
+        {
+            throw new BulwarkTokenExpiredException("Access Token Expired");
+        }
     }
-    
-    public async Task InitializeLocalCertValidation()
+
+    public async Task InitializeLocalKeyValidation()
     {
-        var request = new RestRequest("certs");
-            
+        var request = new RestRequest("keys");
+
         var response = await _client.ExecuteGetAsync(request);
 
         if (response.Content != null)
         {
-            var certs = JsonSerializer.Deserialize<List<Cert>>(response.Content);
+            var keys = JsonSerializer.Deserialize<List<Key>>(response.Content);
 
-            if (certs != null)
+            if (keys != null)
             {
-                _certs = new Dictionary<int, Cert>();
-                foreach (var cert in certs)
+                _keys = new Dictionary<string, Key>();
+                foreach (var key in keys)
                 {
-                    _certs.Add(cert.Generation, cert);
+                    _keys.Add(key.KeyId, key);
                 }
             }
         }
     }
-    
+
     public async Task<Authenticated> Renew(string refreshToken,
         string email, string deviceId)
     {
@@ -298,7 +309,7 @@ public class Authenticate
         {
             Email = email,
             DeviceId = deviceId,
-            RefreshToken = refreshToken
+            Token = refreshToken
         };
 
         var request = new RestRequest("authentication/renew")
@@ -310,16 +321,18 @@ public class Authenticate
         {
             var error = JsonSerializer
                 .Deserialize<Error>(response.Content);
-            if (error is { Detail: { } })
+
+            if (error is not { Detail: not null }) throw new BulwarkException("Unknown error");
+            if (error.Detail.Contains("token expired", System.StringComparison.CurrentCultureIgnoreCase))
             {
-                throw new BulwarkException(error.Detail);
+                throw new BulwarkTokenExpiredException(error.Detail);
             }
-            
-            throw new BulwarkException("Unknown error");
+            throw new BulwarkException(error.Detail);
+
         }
         if(response.Content != null)
         {
-            return JsonSerializer.Deserialize<Authenticated>(response.Content) ?? 
+            return JsonSerializer.Deserialize<Authenticated>(response.Content) ??
                    throw new BulwarkException("No Content");
         }
 
@@ -333,7 +346,7 @@ public class Authenticate
         {
             Email = email,
             DeviceId = deviceId,
-            AccessToken = accessToken
+            Token = accessToken
         };
 
         var request = new RestRequest("authentication/revoke")
@@ -349,7 +362,7 @@ public class Authenticate
             {
                 throw new BulwarkException(error.Detail);
             }
-            
+
             throw new BulwarkException("Unknown error");
         }
     }
