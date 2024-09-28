@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Bulwark.Auth.Guard.Exceptions;
 using JWT.Algorithms;
 using JWT.Builder;
+using JWT.Exceptions;
 using RestSharp;
 
 namespace Bulwark.Auth.Guard;
@@ -185,9 +186,10 @@ public class Authenticate
         {
             var error = JsonSerializer
                 .Deserialize<Error>(response.Content);
-            if (error is { Detail: { } })
+            if (error is not { Detail: not null }) throw new BulwarkException("Unknown error");
+            if (error.Detail.Contains("token expired", System.StringComparison.CurrentCultureIgnoreCase))
             {
-                throw new BulwarkException(error.Detail);
+                throw new BulwarkTokenExpiredException(error.Detail);
             }
 
             throw new BulwarkException("Unknown error");
@@ -262,14 +264,21 @@ public class Authenticate
 
         publicKey.ImportFromPem(key.PublicKey.ToCharArray());
 
-        var json = JwtBuilder.Create()
-            .WithAlgorithm(new RS256Algorithm(publicKey))
-            .MustVerifySignature()
-            .Decode(accessToken);
+        try
+        {
+            var json = JwtBuilder.Create()
+                .WithAlgorithm(new RS256Algorithm(publicKey))
+                .MustVerifySignature()
+                .Decode(accessToken);
 
-        var token = JsonSerializer.Deserialize<AccessToken>(json);
+            var token = JsonSerializer.Deserialize<AccessToken>(json);
 
-        return token;
+            return token;
+        }
+        catch (TokenExpiredException)
+        {
+            throw new BulwarkTokenExpiredException("Access Token Expired");
+        }
     }
 
     public async Task InitializeLocalKeyValidation()
@@ -312,12 +321,14 @@ public class Authenticate
         {
             var error = JsonSerializer
                 .Deserialize<Error>(response.Content);
-            if (error is { Detail: { } })
-            {
-                throw new BulwarkException(error.Detail);
-            }
 
-            throw new BulwarkException("Unknown error");
+            if (error is not { Detail: not null }) throw new BulwarkException("Unknown error");
+            if (error.Detail.Contains("token expired", System.StringComparison.CurrentCultureIgnoreCase))
+            {
+                throw new BulwarkTokenExpiredException(error.Detail);
+            }
+            throw new BulwarkException(error.Detail);
+
         }
         if(response.Content != null)
         {

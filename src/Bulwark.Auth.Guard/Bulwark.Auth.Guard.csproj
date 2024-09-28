@@ -34,7 +34,4 @@
     <PackageReference Include="RestSharp" Version="112.0.0" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="6.25.1" />
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Exceptions\" />
-  </ItemGroup>
 </Project>
